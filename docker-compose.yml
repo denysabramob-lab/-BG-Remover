@@ -1,0 +1,73 @@
+# BG Remover Pro - Docker Compose
+# KIMI DESIGN
+# Repository: https://github.com/denysabramob-lab/-BG-Remover.git
+#
+# Usage:
+#   docker-compose up -d          # Start in background
+#   docker-compose up             # Start with logs
+#   docker-compose down           # Stop
+#   docker-compose down -v        # Stop and remove volumes
+#   docker-compose logs -f        # View logs
+
+version: '3.8'
+
+services:
+  bg-remover:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bg-remover-pro:latest
+    container_name: bg-remover-pro
+    restart: unless-stopped
+    
+    ports:
+      - "7860:7860"
+    
+    volumes:
+      # Persist uploads between restarts
+      - ./uploads:/app/uploads
+      # Persist results
+      - ./results:/app/results
+      # Persist previews cache
+      - ./previews:/app/previews
+      # Optional: mount source images folder
+      - ./sours:/app/sours
+    
+    environment:
+      # Run on CPU (recommended for most setups)
+      - DEVICE=cpu
+      # Optional: set number of workers
+      - WORKERS=1
+    
+    # Resource limits (adjust based on your server)
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Optional: CLI service for batch processing
+  bg-remover-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bg-remover-pro:latest
+    container_name: bg-remover-pro-cli
+    entrypoint: ["python", "main.py"]
+    volumes:
+      - ./sours:/app/sours
+      - ./results:/app/results
+    profiles:
+      - cli
+    # Run once and exit
+    restart: "no"
